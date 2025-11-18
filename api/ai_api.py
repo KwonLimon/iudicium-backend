@@ -1,20 +1,11 @@
-from fastapi import APIRouter, Depends
-from sqlmodel.ext.asyncio.session import AsyncSession
+from fastapi import APIRouter, Depends, UploadFile, File, Form
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
-from models.prompt import Prompt
-from models.send_message_to_chat import SendMessageToChat
-from services.ai_service import generateAnswer, chatWithBot
+from services.ai_service import generate_answer
 
 router = APIRouter(tags=["AI"])
 
 @router.post("/generate")
-async def generate(request: Prompt):
-   return await generateAnswer(request.prompt)
-
-
-@router.post("/chat")
-async def chat(request: SendMessageToChat, session: AsyncSession = Depends(get_db)):
-    return await chatWithBot(request.id, request.prompt, session)
-
-
+async def generate(prompt: str = Form(...),file: UploadFile = File(...) ,session: AsyncSession = Depends(get_db)):
+   return await generate_answer(prompt, file, session)

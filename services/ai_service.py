@@ -3,8 +3,8 @@ import httpx
 from fastapi import UploadFile
 
 from core.config import settings
-from models.request_to_ai import RequestToAI
-from schemas.candidate_profile import CandidateProfile
+from schemas.request_to_ai import RequestToAI
+from models.candidate_profile import CandidateProfile
 from services.file_service import process_file
 from services.minio_service import upload_file
 

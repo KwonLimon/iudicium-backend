@@ -4,7 +4,7 @@ from fastapi import UploadFile
 
 from core.config import settings
 from object_storage.minio_client import minio_client
-from schemas.candidate_file import CandidateFile
+from models.candidate_file import CandidateFile
 from services.file_service import get_file_extension
 
 

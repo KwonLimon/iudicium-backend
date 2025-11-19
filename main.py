@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from api import ai_api, minio_api
+from api import ai_api, minio_api, candidate_api
 from core.config import settings
 from db.session import engine, Base
 from object_storage.minio_client import minio_client
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="ludicium backend", version="0.1.0", lifespan=lifespan)
 app.include_router(ai_api.router, prefix="/api/v1/ai", tags=["AI"])
 app.include_router(minio_api.router, prefix="/api/v1/minio", tags=["Minio"])
+app.include_router(candidate_api.router, prefix="/api/v1/candidate", tags=["Candidate"])
 
 
 @app.get("/")

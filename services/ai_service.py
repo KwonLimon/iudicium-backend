@@ -1,18 +1,17 @@
 import json
-
-import fitz
 import httpx
-from docx.document import Document
-from fastapi import UploadFile, File, HTTPException
+from fastapi import UploadFile
 
 from core.config import settings
 from models.request_to_ai import RequestToAI
 from schemas.candidate_profile import CandidateProfile
+from services.file_service import process_file
+from services.minio_service import upload_file
 
 basePrompt = """Твоє завдання — проаналізувати наданий файл із резюме та створити стандартизований JSON-профіль кандидата.
 
 Спочатку уважно прочитай документ. Якщо деякі дані відсутні або сумнівні — познач їх як "unknown" або "not specified", але не вигадуй інформацію.
-Інформацію в JSON зроби украънською мовою
+Інформацію в JSON зроби украЇнською мовою
 
 📌 Структура вихідних даних (JSON)
 
@@ -105,8 +104,7 @@ overall_profile_index — це середнє арифметичне попер�
 Вивід має починатися з { і закінчуватися }"""
 
 
-
-async def generate_answer(prompt, file ,session):
+async def generate_answer(prompt: str, file: UploadFile, session):
     text = await process_file(file)
     prompt = basePrompt + f"\nДані про кандидата:{text}\n" + prompt
     async with httpx.AsyncClient(timeout=httpx.Timeout(120)) as client:
@@ -117,38 +115,11 @@ async def generate_answer(prompt, file ,session):
         )
         data = json.loads(response.text)
         answer = data["response"]
-        answer = answer.replace("```", "")
-        answer = answer.replace("json", "")
-        profile = CandidateProfile(profile=answer)
+        answer = answer.replace("```json", "").replace("```", "").strip()
+        profile_data = json.loads(answer)
+        candidate_file = await upload_file(file)
+        profile = CandidateProfile(profile=profile_data, files=[candidate_file])
         session.add(profile)
         await session.commit()
         await session.refresh(profile)
     return profile
-
-async def process_file(file: UploadFile = File(...)):
-    content_type = file.content_type
-
-    if content_type.startswith("text/"):
-        text = (await file.read()).decode("utf-8")
-        return text
-
-    if content_type == "application/pdf":
-        pdf_bytes = await file.read()
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        text = "\n".join(page.get_text() for page in doc)
-        return text
-
-    if content_type == "application/json":
-        text = json.loads(await file.read())
-        return text
-
-    if "officedocument.wordprocessingml" in content_type:
-        doc = Document(file.file)
-        text = "\n".join(p.text for p in doc.paragraphs)
-        return text
-
-
-    raise HTTPException(
-        status_code=415,
-        detail=f"Unsupported file type: {content_type}"
-    )

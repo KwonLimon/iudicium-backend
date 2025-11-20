@@ -1,8 +1,8 @@
-import uuid
+from uuid import UUID
 
 from pydantic import BaseModel
 
 
 class CandidateList(BaseModel):
-    id: uuid.UUID
+    id: UUID
     full_name: str

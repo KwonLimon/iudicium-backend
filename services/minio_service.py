@@ -1,4 +1,5 @@
 import uuid
+from asyncio import to_thread
 
 from fastapi import UploadFile
 
@@ -13,7 +14,7 @@ async def upload_file(file: UploadFile):
     id = uuid.uuid4()
     file_id = str(id)
     file_extension = await get_file_extension(file)
-    minio_client.put_object(settings.MINIO_BUCKET, file_id + file_extension, file.file, file.size,
-                            file.content_type)
+    await to_thread(
+        minio_client.put_object, settings.MINIO_BUCKET, file_id + file_extension, file.file, file.size,
+        file.content_type)
     return CandidateFile(id=id, file_name=file.filename, content_type=file.content_type, file_size=file.size)
-

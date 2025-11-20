@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,3 +23,10 @@ async def create_position(position_create: PositionCreate, session: AsyncSession
     await session.commit()
     await session.refresh(position)
     return position
+
+async def delete_position_by_id(id: UUID, session: AsyncSession):
+    position = await session.get(Position, id)
+    if position is None:
+        raise HTTPException(status_code=404, detail="Position not found")
+    await session.delete(position)
+    await session.commit()

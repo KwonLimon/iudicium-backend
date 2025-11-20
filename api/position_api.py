@@ -3,10 +3,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from db.session import get_db
 from schemas.position_schemas import PositionResponse, PositionCreate
-from services.position_service import get_all_position, get_position_by_id, create_position
+from services.position_service import get_all_position, get_position_by_id, create_position, delete_position_by_id
 
 router = APIRouter(tags=["Position"])
 
@@ -24,3 +25,9 @@ async def get_by_id(id: UUID, session: AsyncSession = Depends(get_db)):
 @router.post("/create", response_model=PositionResponse)
 async def create(position: PositionCreate, session: AsyncSession = Depends(get_db)):
     return await create_position(position, session)
+
+
+@router.delete("/delete/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_by_id(id: UUID, session: AsyncSession = Depends(get_db)):
+    await delete_position_by_id(id, session)
+    return None

@@ -1,6 +1,7 @@
 import json
 import httpx
 from fastapi import UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from schemas.request_to_ai import RequestToAI
@@ -104,7 +105,7 @@ overall_profile_index — це середнє арифметичне попер�
 Вивід має починатися з { і закінчуватися }"""
 
 
-async def generate_answer(prompt: str, file: UploadFile, session):
+async def generate_answer(prompt: str, file: UploadFile, session: AsyncSession):
     text = await process_file(file)
     prompt = basePrompt + f"\nДані про кандидата:{text}\n" + prompt
     async with httpx.AsyncClient(timeout=httpx.Timeout(120)) as client:

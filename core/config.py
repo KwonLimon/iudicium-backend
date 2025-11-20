@@ -8,10 +8,13 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_HOST: str
     POSTGRES_PORT: str
+    POSTGRES_EXTERNAL_PORT: str
     POSTGRES_DB: str
     MINIO_API: str
     MINIO_PORT: str
+    MINIO_EXTERNAL_PORT: str
     MINIO_PORT_APP: str
+    MINIO_EXTERNAL_PORT_APP: str
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
     MINIO_BUCKET: str

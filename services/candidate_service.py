@@ -1,10 +1,11 @@
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate_profile import CandidateProfile
 from schemas.candidate_list import CandidateList
 
 
-async def get_all_candidates(session):
+async def get_all_candidates(session: AsyncSession):
     query = select(CandidateProfile.id, CandidateProfile.profile["candidate"]["full_name"]
                    .as_string().label("full_name"))
     result = await session.execute(query)

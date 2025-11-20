@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,5 +11,5 @@ router = APIRouter(tags=["AI"])
 
 
 @router.post("/generate", response_model=CandidateResponse)
-async def generate(prompt: str = Form(...), file: UploadFile = File(...), session: AsyncSession = Depends(get_db)):
-    return await generate_answer(prompt, file, session)
+async def generate(prompt: str = Form(...), files: List[UploadFile] = File(...), session: AsyncSession = Depends(get_db)):
+    return await generate_answer(prompt, files, session)

@@ -10,3 +10,7 @@ class FileResponse(BaseModel):
     file_size: int
     candidate_id: UUID
     model_config = ConfigDict(from_attributes=True)
+
+class FileError(BaseModel):
+    file_name: str
+    reason: str

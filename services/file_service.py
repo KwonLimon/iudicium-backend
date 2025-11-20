@@ -1,11 +1,14 @@
 import json
 import os
 from io import BytesIO
+from typing import List
 
 import fitz
 import magic
 from docx import Document
 from fastapi import UploadFile, HTTPException
+
+from schemas.file_schemas import FileError
 
 ALLOWED_BINARY_TYPES = {
     "application/pdf": ".pdf",
@@ -69,3 +72,21 @@ async def get_file_extension(file: UploadFile):
         status_code=415,
         detail=f"Unsupported file type: {real_mime}"
     )
+
+async def read_text(files: List[UploadFile]):
+    full_text = ""
+    read_files = []
+    error_files = []
+
+    for i, file in enumerate(files):
+        try:
+            text = await process_file(file)
+            full_text += f"{i}: {text}\n"
+
+            await file.seek(0)
+            read_files.append(file)
+        except:
+            error_file = FileError(file_name=file.filename, reason="Unreadable text")
+            error_files.append(error_file)
+
+    return full_text, read_files, error_files

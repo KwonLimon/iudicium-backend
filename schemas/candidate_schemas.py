@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from schemas.file_schemas import FileResponse
+from schemas.file_schemas import FileResponse, FileError
 
 
 class CandidateBase(BaseModel):
@@ -13,6 +13,7 @@ class CandidateBase(BaseModel):
 class CandidateResponse(CandidateBase):
     profile: dict
     files: List[FileResponse] = []
+    error_files: List[FileError] = []
 
 
 class CandidateList(CandidateBase):

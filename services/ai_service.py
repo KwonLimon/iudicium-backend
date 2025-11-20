@@ -1,4 +1,6 @@
 import json
+from typing import List
+
 import httpx
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from schemas.ai_schemas import RequestToAI
 from models.candidate_profile import CandidateProfile
-from services.file_service import process_file
-from services.minio_service import upload_file
+from schemas.candidate_schemas import CandidateResponse
+from services.file_service import read_text
+from services.minio_service import upload_files
 
 basePrompt = """Твоє завдання — проаналізувати наданий файл із резюме та створити стандартизований JSON-профіль кандидата.
 
@@ -105,9 +108,11 @@ overall_profile_index — це середнє арифметичне попер�
 Вивід має починатися з { і закінчуватися }"""
 
 
-async def generate_answer(prompt: str, file: UploadFile, session: AsyncSession):
-    text = await process_file(file)
-    prompt = basePrompt + f"\nДані про кандидата:{text}\n" + prompt
+async def generate_answer(prompt: str, files: List[UploadFile], session: AsyncSession):
+    full_text, read_files, error_files = await read_text(files)
+
+    prompt = basePrompt + f"\nДані про кандидата:{full_text}\n" + prompt
+
     async with httpx.AsyncClient(timeout=httpx.Timeout(120)) as client:
         request = RequestToAI(model=settings.AI_MODEL, prompt=prompt, stream=False)
         response = await client.post(
@@ -118,9 +123,10 @@ async def generate_answer(prompt: str, file: UploadFile, session: AsyncSession):
         answer = data["response"]
         answer = answer.replace("```json", "").replace("```", "").strip()
         profile_data = json.loads(answer)
-        candidate_file = await upload_file(file)
-        profile = CandidateProfile(profile=profile_data, files=[candidate_file])
+        candidate_files, upload_error_files = await upload_files(read_files)
+        error_files.extend(upload_error_files)
+        profile = CandidateProfile(profile=profile_data, files=candidate_files)
         session.add(profile)
         await session.commit()
         await session.refresh(profile)
-    return profile
+    return CandidateResponse(id=profile.id, profile=profile.profile, files=profile.files, error_files=error_files)

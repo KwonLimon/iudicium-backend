@@ -13,8 +13,8 @@ async def get_all_position(session: AsyncSession):
     return result.scalars().all()
 
 
-async def get_position_by_id(id: UUID, session: AsyncSession):
-    return await session.get(Position, id)
+async def get_position_by_id(position_id: UUID, session: AsyncSession):
+    return await session.get(Position, position_id)
 
 
 async def create_position(position_create: PositionCreate, session: AsyncSession):
@@ -24,8 +24,8 @@ async def create_position(position_create: PositionCreate, session: AsyncSession
     await session.refresh(position)
     return position
 
-async def delete_position_by_id(id: UUID, session: AsyncSession):
-    position = await session.get(Position, id)
+async def delete_position_by_id(position_id: UUID, session: AsyncSession):
+    position = await session.get(Position, position_id)
     if position is None:
         raise HTTPException(status_code=404, detail="Position not found")
     await session.delete(position)

@@ -17,12 +17,12 @@ async def get_all(session: AsyncSession = Depends(get_db)):
     return await get_all_candidates(session)
 
 
-@router.get("/get/{id}", response_model=CandidateResponse)
-async def get_by_id(id: UUID, session: AsyncSession = Depends(get_db)):
-    return await get_candidate_by_id(id, session)
+@router.get("/get/{candidate_id}", response_model=CandidateResponse)
+async def get_by_id(candidate_id: UUID, session: AsyncSession = Depends(get_db)):
+    return await get_candidate_by_id(candidate_id, session)
 
 
-@router.delete("/delete/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_by_id(id: UUID, session: AsyncSession = Depends(get_db)):
-    await delete_candidate_by_id(id, session)
+@router.delete("/delete/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_by_id(candidate_id: UUID, session: AsyncSession = Depends(get_db)):
+    await delete_candidate_by_id(candidate_id, session)
     return None

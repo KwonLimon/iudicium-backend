@@ -10,7 +10,7 @@ from core.config import settings
 from models.candidate_profile import CandidateProfile
 from object_storage.minio_client import minio_client
 from schemas.candidate_schemas import CandidateList
-from services.file_service import get_file_extension, ALLOWED_BINARY_TYPES
+from services.file_service import get_file_extension_minio
 
 
 async def get_all_candidates(session: AsyncSession):
@@ -21,28 +21,24 @@ async def get_all_candidates(session: AsyncSession):
     return [CandidateList(**row) for row in rows]
 
 
-async def get_candidate_by_id(id: UUID, session: AsyncSession):
-    candidate = await session.get(CandidateProfile, id)
+async def get_candidate_by_id(candidate_id: UUID, session: AsyncSession):
+    candidate = await session.get(CandidateProfile, candidate_id)
 
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
     return candidate
 
-async def delete_candidate_by_id(id: UUID, session: AsyncSession):
-    candidate = await session.get(CandidateProfile, id)
+
+async def delete_candidate_by_id(candidate_id: UUID, session: AsyncSession):
+    candidate = await session.get(CandidateProfile, candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
     minio_tasks = []
 
     for file in candidate.files:
-        if file.content_type.startswith("text/"):
-            filename = file.file_name
-            _, ext = os.path.splitext(filename)
-            ext = ext.lower()
-        else:
-            ext = ALLOWED_BINARY_TYPES[file.content_type]
+        ext = await get_file_extension_minio(file)
         task = to_thread(minio_client.remove_object, settings.MINIO_BUCKET, str(file.id) + ext)
         minio_tasks.append(task)
 

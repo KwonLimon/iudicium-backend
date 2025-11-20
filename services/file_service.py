@@ -8,6 +8,7 @@ import magic
 from docx import Document
 from fastapi import UploadFile, HTTPException
 
+from models.candidate_file import CandidateFile
 from schemas.file_schemas import FileError
 
 ALLOWED_BINARY_TYPES = {
@@ -72,6 +73,15 @@ async def get_file_extension(file: UploadFile):
         status_code=415,
         detail=f"Unsupported file type: {real_mime}"
     )
+
+def get_file_extension_minio(file: CandidateFile):
+    if file.content_type.startswith("text/"):
+        filename = file.file_name
+        _, ext = os.path.splitext(filename)
+        ext = ext.lower()
+    else:
+        ext = ALLOWED_BINARY_TYPES[file.content_type]
+    return ext
 
 async def read_text(files: List[UploadFile]):
     full_text = ""

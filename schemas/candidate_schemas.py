@@ -17,4 +17,4 @@ class CandidateResponse(CandidateBase):
 
 
 class CandidateList(CandidateBase):
-    full_name: str
+    name: str

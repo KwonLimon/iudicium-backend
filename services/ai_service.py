@@ -4,7 +4,7 @@ from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
-from schemas.request_to_ai import RequestToAI
+from schemas.ai_schemas import RequestToAI
 from models.candidate_profile import CandidateProfile
 from services.file_service import process_file
 from services.minio_service import upload_file

@@ -9,4 +9,4 @@ class FileResponse(BaseModel):
     content_type: str
     file_size: int
     candidate_id: UUID
-    model_config = ConfigDict(from_attributes = True)
+    model_config = ConfigDict(from_attributes=True)

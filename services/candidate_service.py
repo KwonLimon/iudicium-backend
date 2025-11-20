@@ -15,7 +15,7 @@ from services.file_service import get_file_extension, ALLOWED_BINARY_TYPES
 
 async def get_all_candidates(session: AsyncSession):
     query = select(CandidateProfile.id, CandidateProfile.profile["candidate"]["full_name"]
-                   .as_string().label("full_name"))
+                   .as_string().label("name"))
     result = await session.execute(query)
     rows = result.mappings().all()
     return [CandidateList(**row) for row in rows]

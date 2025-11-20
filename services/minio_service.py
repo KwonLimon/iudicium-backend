@@ -1,4 +1,4 @@
-import uuid
+from uuid import UUID, uuid4
 from asyncio import to_thread, gather
 from typing import List
 
@@ -13,7 +13,7 @@ from services.file_service import get_file_extension
 
 async def upload_file(file: UploadFile):
     await file.seek(0)
-    id = uuid.uuid4()
+    id = uuid4()
     file_id = str(id)
     file_extension = await get_file_extension(file)
     await to_thread(

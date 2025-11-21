@@ -13,14 +13,14 @@ from models.candidate_profile import CandidateProfile
 from object_storage.minio_client import minio_client
 from models.candidate_file import CandidateFile
 from schemas.file_schemas import FileError
-from services.file_service import get_file_extension, get_file_extension_minio
+from services.file_service import _get_file_extension, get_file_extension_minio
 
 
-async def upload_file(file: UploadFile):
+async def _upload_file(file: UploadFile):
     await file.seek(0)
     file_id = uuid4()
     file_id = str(file_id)
-    file_extension = await get_file_extension(file)
+    file_extension = await _get_file_extension(file)
     await to_thread(
         minio_client.put_object, settings.MINIO_BUCKET, file_id + file_extension, file.file, file.size,
         file.content_type)
@@ -31,7 +31,7 @@ async def upload_files(files: List[UploadFile]):
     upload_files = []
     error_files = []
 
-    tasks = [upload_file(file) for file in files]
+    tasks = [_upload_file(file) for file in files]
     results = await gather(*tasks, return_exceptions=True)
 
     for i, candidate_file in enumerate(results):
@@ -70,7 +70,7 @@ async def upload_candidate_file(candidate_id: UUID, file: UploadFile, session: A
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    candidate_file = await upload_file(file)
+    candidate_file = await _upload_file(file)
 
     candidate.files.append(candidate_file)
     session.add(candidate)

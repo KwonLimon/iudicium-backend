@@ -20,8 +20,8 @@ ALLOWED_BINARY_TYPES = {
 ALLOWED_TEXT_EXTENSIONS = {".txt", ".csv", ".mermaid", ".mmd", ".md", ".json"}
 
 
-async def process_file(file: UploadFile):
-    file_extension = await get_file_extension(file)
+async def _process_file(file: UploadFile):
+    file_extension = await _get_file_extension(file)
     content = await file.read()
     match file_extension:
         case ".txt" | ".csv" | ".mermaid" | ".mmd" | ".md":
@@ -45,7 +45,7 @@ async def process_file(file: UploadFile):
             )
 
 
-async def get_file_extension(file: UploadFile):
+async def _get_file_extension(file: UploadFile):
     await file.seek(0)
     initial_content = await file.read(2048)
     await file.seek(0)
@@ -90,7 +90,7 @@ async def read_text(files: List[UploadFile]):
 
     for i, file in enumerate(files):
         try:
-            text = await process_file(file)
+            text = await _process_file(file)
             full_text += f"{i}: {text}\n"
 
             await file.seek(0)

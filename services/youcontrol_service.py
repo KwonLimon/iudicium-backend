@@ -15,12 +15,15 @@ HEADERS = {
 ENDPOINTS = {
     "/individualsSsuWantedAndTraitorPersons": "🔴 СБУ: Зрадники та Розшук",
     "/ruswarcriminals": "🔴 Реєстр воєнних злочинців РФ",
-    "/nacpwarsanctions": "🔴 База 'Війна і Санкції'",
+    "/generalprosecutor24febsuspect": "Підозрювані магістральної справи '24 лютого'",
     "/myrotvorets": "🔴 Центр 'Миротворець'",
     "/corruptedPersons": "🟠 Реєстр корупціонерів",
-    "/wantedOrDisappearedPersons": "🟠 Розшук МВС",
     "/individualsRnboSanctions": "🟠 Санкції РНБО",
-    "/lustratedPersons": "🟠 Люстровані особи"
+    "/individualsGlobalSanctionsLists" : "Перевірка Міжнародних санкцій",
+    "/lustratedPersons": "🟠 Люстровані особи",
+    "/individualsRelatedPersons" : "Пов’язані з фізичною особою компанії та ФОП",
+    "/wantedOrDisappearedPersons": "🟠 Розшук МВС",
+    "/individualsCourtCasesToBeHeard": "Судові справи, призначені до розгляду",
 }
 
 

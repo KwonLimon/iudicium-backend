@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic.v1 import BaseSettings
 
 
@@ -19,6 +21,7 @@ class Settings(BaseSettings):
     MINIO_ROOT_PASSWORD: str
     MINIO_BUCKET: str
     MINIO_SECURE: bool
+    CORS_ORIGINS: List[str]
 
     class Config:
         env_file = ".env"

@@ -12,6 +12,7 @@ class CandidateBase(BaseModel):
 
 class CandidateResponse(CandidateBase):
     profile: dict
+    position_id: UUID | None = None
     files: List[FileResponse] = []
     error_files: List[FileError] = []
 

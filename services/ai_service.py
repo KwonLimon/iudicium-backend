@@ -26,7 +26,7 @@ async def generate_answer(prompt: str, position_id: UUID, files: List[UploadFile
     async with httpx.AsyncClient(timeout=httpx.Timeout(120)) as client:
         request = RequestToAI(model=settings.AI_MODEL, prompt=final_prompt, stream=False,
                               format="json",
-                              options= {"temperature": 0.0, "seed": 137})
+                              options={"temperature": 0.0, "seed": 137})
         response = await client.post(
             f"{settings.OLLAMA_API}/api/generate",
             json=request.model_dump()
@@ -38,8 +38,9 @@ async def generate_answer(prompt: str, position_id: UUID, files: List[UploadFile
             raise HTTPException(status_code=422, detail="No candidate data")
         candidate_files, upload_error_files = await upload_files(read_files)
         error_files.extend(upload_error_files)
-        profile = CandidateProfile(profile=profile_data, files=candidate_files)
+        profile = CandidateProfile(profile=profile_data, files=candidate_files, position_id=position_id)
         session.add(profile)
         await session.commit()
         await session.refresh(profile)
-    return CandidateResponse(id=profile.id, profile=profile.profile, files=profile.files, error_files=error_files)
+    return CandidateResponse(id=profile.id, profile=profile.profile, position_id=profile.position_id,
+                             files=profile.files, error_files=error_files)

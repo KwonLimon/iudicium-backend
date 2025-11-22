@@ -14,7 +14,12 @@ async def get_all_position(session: AsyncSession):
 
 
 async def get_position_by_id(position_id: UUID, session: AsyncSession):
-    return await session.get(Position, position_id)
+    position = await session.get(Position, position_id)
+
+    if not position:
+        raise HTTPException(status_code=404, detail="Position not found")
+
+    return position
 
 
 async def create_position(position_create: PositionCreate, session: AsyncSession):

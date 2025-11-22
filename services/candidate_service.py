@@ -1,4 +1,3 @@
-import os
 from asyncio import to_thread, gather
 from uuid import UUID
 
@@ -9,16 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from models.candidate_profile import CandidateProfile
 from object_storage.minio_client import minio_client
-from schemas.candidate_schemas import CandidateList
 from services.file_service import get_file_extension_minio
 
 
 async def get_all_candidates(session: AsyncSession):
-    query = select(CandidateProfile.id, CandidateProfile.profile["candidate"]["full_name"]
-                   .as_string().label("name"))
-    result = await session.execute(query)
-    rows = result.mappings().all()
-    return [CandidateList(**row) for row in rows]
+    result = await session.execute(select(CandidateProfile))
+    return result.scalars().all()
 
 
 async def get_candidate_by_id(candidate_id: UUID, session: AsyncSession):
@@ -38,7 +33,7 @@ async def delete_candidate_by_id(candidate_id: UUID, session: AsyncSession):
     minio_tasks = []
 
     for file in candidate.files:
-        ext = await get_file_extension_minio(file)
+        ext = get_file_extension_minio(file)
         task = to_thread(minio_client.remove_object, settings.MINIO_BUCKET, str(file.id) + ext)
         minio_tasks.append(task)
 

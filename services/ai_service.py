@@ -9,16 +9,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from core.prompt import basePrompt, info_prompt
 from schemas.ai_schemas import RequestToAI
-from models.candidate_profile import CandidateProfile
 from schemas.candidate_schemas import CandidateResponse
 from schemas.position_schemas import PositionResponse
-from services.file_service import read_text
+from services.candidate_service import get_candidate_by_id, create_candidate, update_candidate_profile
+from services.file_service import read_files, read_files_from_minio
 from services.minio_service import upload_files
 from services.position_service import get_position_by_id
 
 
 async def generate_answer(prompt: str, position_id: UUID, files: List[UploadFile], session: AsyncSession):
-    full_text, read_files, error_files = await read_text(files)
+    full_text, processed_files, error_files = await read_files(files)
+    profile_data = await make_request(full_text, position_id, prompt, session)
+    if profile_data["candidate"]["full_name"] == "unknown":
+        raise HTTPException(status_code=422, detail="No candidate data")
+    candidate_files, upload_error_files = await upload_files(processed_files)
+    error_files.extend(upload_error_files)
+    new_candidate = await create_candidate(profile_data, candidate_files, position_id, session)
+
+    return CandidateResponse(id=new_candidate.id, profile=new_candidate.profile, position_id=new_candidate.position_id,
+                             files=new_candidate.files, error_files=error_files)
+
+
+async def refresh_candidate(candidate_id: UUID, prompt: str, session: AsyncSession):
+    candidate = await get_candidate_by_id(candidate_id, session)
+    files = candidate.files
+    full_text, processed_files, error_files = await read_files_from_minio(files)
+    profile_data = await make_request(full_text, candidate.position_id, prompt, session)
+    updated_candidate = await update_candidate_profile(candidate_id, profile_data, session)
+    return CandidateResponse(id=updated_candidate.id, profile=updated_candidate.profile,
+                             position_id=updated_candidate.position_id,
+                             files=updated_candidate.files, error_files=error_files)
+
+
+async def make_request(full_text: str, position_id: UUID, prompt, session: AsyncSession):
     position_orm = await get_position_by_id(position_id, session)
     position = PositionResponse.model_validate(position_orm).model_dump()
     final_prompt = basePrompt + info_prompt.format(full_text=full_text, position=position, prompt=prompt)
@@ -31,16 +54,7 @@ async def generate_answer(prompt: str, position_id: UUID, files: List[UploadFile
             f"{settings.OLLAMA_API}/api/generate",
             json=request.model_dump()
         )
+
         data = json.loads(response.text)
         answer = data["response"]
-        profile_data = json.loads(answer)
-        if profile_data["candidate"]["full_name"] == "unknown":
-            raise HTTPException(status_code=422, detail="No candidate data")
-        candidate_files, upload_error_files = await upload_files(read_files)
-        error_files.extend(upload_error_files)
-        profile = CandidateProfile(profile=profile_data, files=candidate_files, position_id=position_id)
-        session.add(profile)
-        await session.commit()
-        await session.refresh(profile)
-    return CandidateResponse(id=profile.id, profile=profile.profile, position_id=profile.position_id,
-                             files=profile.files, error_files=error_files)
+        return json.loads(answer)

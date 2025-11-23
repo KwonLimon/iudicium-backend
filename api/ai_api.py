@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
 from schemas.candidate_schemas import CandidateResponse
-from services.ai_service import generate_answer
+from services.ai_service import generate_answer, refresh_candidate
 
 router = APIRouter(tags=["AI"])
 
@@ -15,3 +15,8 @@ router = APIRouter(tags=["AI"])
 async def generate(prompt: str | None = Form(None), position_id: UUID = Form(...), files: List[UploadFile] = File(...),
                    session: AsyncSession = Depends(get_db)):
     return await generate_answer(prompt, position_id, files, session)
+
+
+@router.post("/refresh", response_model=CandidateResponse)
+async def refresh(candidate_id: UUID, prompt: str | None, session: AsyncSession = Depends(get_db)):
+    return await refresh_candidate(candidate_id, prompt, session)

@@ -20,6 +20,30 @@ from services.youcontrol_service import check_candidate
 
 async def generate_answer(prompt: str, position_id: UUID, files: List[UploadFile], websearch: bool,
                           session: AsyncSession):
+    """
+        Основний пайплайн створення кандидата: обробка файлів, AI-аналіз та збереження.
+
+        Ця функція виконує повний цикл обробки нового кандидата:
+        1. Зчитує та парсить текст із завантажених файлів (PDF, DOCX, TXT).
+        2. (Опціонально) Виконує OSINT-пошук (Websearch) по відкритих реєстрах.
+        3. Формує промпт та відправляє запит до LLM (Ollama) для аналізу резюме.
+        4. Валідує отримані дані (перевіряє наявність імені).
+        5. Завантажує файли у сховище MinIO.
+        6. Створює запис про кандидата в базі даних.
+
+        Args:
+            prompt (str): Додаткові вказівки від користувача для AI (наприклад, "Зверни увагу на досвід з AWS").
+            position_id (UUID): ID вакансії, на яку подається кандидат (для порівняння вимог).
+            files (List[UploadFile]): Список файлів резюме.
+            websearch (bool): Прапорець для увімкнення перевірки по реєстрах (YouControl).
+            session (AsyncSession): Сесія бази даних.
+
+        Returns:
+            CandidateResponse: Сформований об'єкт кандидата з оцінками та файлами.
+
+        Raises:
+            HTTPException(422): Якщо AI не зміг знайти ім'я кандидата або дані некоректні.
+        """
     full_text, processed_files, error_files = await read_files(files)
 
     additional_info = ""
@@ -38,6 +62,21 @@ async def generate_answer(prompt: str, position_id: UUID, files: List[UploadFile
 
 
 async def refresh_candidate(candidate_id: UUID, prompt: str, websearch: bool, session: AsyncSession):
+    """
+        Оновлення (регенерація) профілю існуючого кандидата.
+
+        Використовується, коли потрібно перерахувати оцінки або додати нові вказівки для AI
+        без повторного завантаження файлів. Файли витягуються з MinIO.
+
+        Args:
+            candidate_id (UUID): ID існуючого кандидата.
+            prompt (str): Нові або додаткові інструкції для AI.
+            websearch (bool): Чи потрібно (пере)запускати пошук по реєстрах.
+            session (AsyncSession): Сесія бази даних.
+
+        Returns:
+            CandidateResponse: Оновлений об'єкт кандидата.
+        """
     candidate = await get_candidate_by_id(candidate_id, session)
     files = candidate.files
     full_text, processed_files, error_files = await read_files_from_minio(files)
@@ -55,6 +94,22 @@ async def refresh_candidate(candidate_id: UUID, prompt: str, websearch: bool, se
 
 
 async def make_request(full_text: str, position_id: UUID, prompt: str, additional_info, session: AsyncSession):
+    """
+        Формування промпту та виконання запиту до LLM (Ollama).
+
+        Функція збирає всі дані (текст резюме, опис вакансії, дані з реєстрів, вказівки користувача)
+        в один великий промпт і відправляє його моделі.
+
+        Args:
+            full_text (str): Повний текст резюме.
+            position_id (UUID): ID вакансії для отримання вимог.
+            prompt (str): Вказівки користувача.
+            additional_info (str): Результати пошуку OSINT (JSON-строка).
+            session (AsyncSession): Сесія БД.
+
+        Returns:
+            dict: Розпарсений JSON-відповідь від AI з аналізом кандидата.
+        """
     position_orm = await get_position_by_id(position_id, session)
     position = PositionResponse.model_validate(position_orm).model_dump_json()
     final_prompt = basePrompt + info_prompt.format(full_text=full_text, position=position, prompt=prompt,
@@ -75,6 +130,21 @@ async def make_request(full_text: str, position_id: UUID, prompt: str, additiona
 
 
 async def get_short_candidate_info(full_text: str):
+    """
+        Екстракція короткої інформації (ПІБ, дата народження) для пошуку.
+
+        Використовує окремий, короткий промпт для AI, щоб швидко витягнути
+        дані, необхідні для запитів у зовнішні реєстри.
+
+        Args:
+            full_text (str): Текст резюме.
+
+        Returns:
+            ShortCandidateInfo: Pydantic-модель з ім'ям та датою народження.
+
+        Raises:
+            HTTPException(422): Якщо прізвище не знайдено.
+        """
     final_prompt = short_info_prompt + full_text
     async with httpx.AsyncClient(timeout=httpx.Timeout(120)) as client:
         request = RequestToAI(model=settings.AI_MODEL, prompt=final_prompt, stream=False, format="json",
@@ -96,6 +166,19 @@ async def get_short_candidate_info(full_text: str):
 
 
 async def do_websearch(full_text: str):
+    """
+        Оркестратор OSINT-пошуку (YouControl).
+
+        1. Витягує ПІБ та дату народження з тексту резюме (через AI).
+        2. Робить запити до реєстрів YouControl.
+        3. Повертає результат у вигляді JSON-строки для додавання в контекст AI.
+
+        Args:
+            full_text (str): Текст резюме.
+
+        Returns:
+            str: JSON-строка зі знайденими ризиками або інформацією про відсутність даних.
+        """
     candidate_info = await get_short_candidate_info(full_text)
     youcontrol_info = await check_candidate(candidate_info.LastName, candidate_info.FirstName,
                                             candidate_info.MiddleName, candidate_info.BirthDate)
@@ -103,6 +186,19 @@ async def do_websearch(full_text: str):
 
 
 async def get_questions_for_candidate(candidate_id: UUID, session: AsyncSession):
+    """
+        Генерація персоналізованих питань для співбесіди.
+
+        Аналізує профіль кандидата (навички, досвід) і створює список питань
+        для перевірки його компетенцій.
+
+        Args:
+            candidate_id (UUID): ID кандидата.
+            session (AsyncSession): Сесія БД.
+
+        Returns:
+            str: Текстовий список питань (або JSON, залежно від промпту).
+        """
     candidate = await get_candidate_by_id(candidate_id, session)
     profile = json.dumps(candidate.profile, ensure_ascii=False, indent=2)
     async with httpx.AsyncClient(timeout=httpx.Timeout(120)) as client:

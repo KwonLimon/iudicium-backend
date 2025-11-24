@@ -25,7 +25,16 @@ async def get_by_id(candidate_id: UUID, session: AsyncSession = Depends(get_db))
     return await get_candidate_by_id(candidate_id, session)
 
 
-@router.get("/export/{candidate_id}")
+@router.get("/export/{candidate_id}", summary="📤 Експорт профілю кандидата",
+    description="""
+    Генерує та завантажує файл із профілем кандидата у вибраному форматі.
+    
+    **Доступні формати:**
+    * `json` — Повна структура даних.
+    * `csv` — Плоска таблиця, зручна для аналітики в Excel.
+    * `docx` — Оформлене резюме у форматі Word.
+    * `pdf` — Готовий до друку документ.
+    """)
 async def export(candidate_id: UUID, format: ExportFormat = Query(...), session: AsyncSession = Depends(get_db)):
     return await export_candidate(candidate_id, format, session)
 

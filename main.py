@@ -4,7 +4,7 @@ from api import ai_api, minio_api, candidate_api, position_api
 from core.cors import set_cors
 from core.lifespan import lifespan
 
-app = FastAPI(title="iudicium backend", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="iudicium backend", version="1.1.cb", lifespan=lifespan)
 set_cors(app)
 
 app.include_router(ai_api.router, prefix="/api/v1/ai", tags=["AI"])

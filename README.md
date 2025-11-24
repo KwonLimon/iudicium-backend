@@ -1,160 +1,192 @@
-﻿# ⚖️ Iudicium Backend
+# Backend Services
 
-![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?style=for-the-badge&logo=postgresql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![MinIO](https://img.shields.io/badge/MinIO-Storage-c72c48?style=for-the-badge&logo=minio&logoColor=white)
 
-**Iudicium** — це інтелектуальна система для автоматизованого аналізу кандидатів, перевірки ризиків та генерації звітів за допомогою LLM (Gemma 3) та зовнішніх реєстрів.
 
-Проєкт реалізовано на **FastAPI** з використанням асинхронної архітектури та мікросервісного підходу.
+The services layer contains the business logic for the Iudicium application. Each service handles a specific domain of functionality.
 
----
+## Service Overview
 
-## 🚀 Основні можливості
-
-* 📄 **Розумний парсинг файлів:** Підтримка PDF, DOCX, TXT. Витягування тексту та метаданих.
-* 🧠 **AI-Аналіз (Gemma 3):**
-    * Оцінка відповідності кандидата вакансії (Relevance Score).
-    * Аналіз Soft та Hard Skills.
-    * Виявлення брехні та невідповідностей (Trust Score).
-* 🛡️ **Перевірка безпеки (OSINT / Compliance):**
-    * Пошук токсичних зв'язків (РФ/РБ, підсанкційні компанії).
-    * Перевірка в реєстрах **YouControl** (СБУ, Миротворець, Боржники, Корупціонери).
-    * Автоматичний Kill-Switch для ризикових кандидатів.
-* ☁️ **Файлове сховище:** Безпечне зберігання оригіналів резюме в **MinIO** (S3).
-* 📊 **Генерація звітів:** Експорт профілю кандидата у форматах:
-    * `JSON` (структуровані дані).
-    * `CSV` (плоска таблиця для аналітики).
-    * `DOCX` (форматований документ Word).
-    * `PDF` (згенерований через HTML-шаблони).
+| Service | Description |
+|---------|-------------|
+| `ai_service.py` | AI-powered candidate evaluation using Ollama |
+| `candidate_service.py` | Candidate profile CRUD operations |
+| `position_service.py` | Position/job management operations |
+| `minio_service.py` | File storage operations with MinIO |
+| `file_service.py` | File parsing and text extraction |
+| `export_service.py` | Export profiles to multiple formats |
+| `youcontrol_service.py` | External background check integration |
 
 ---
 
-## 🛠 Технічний стек
+## ai_service.py
 
-* **Мова:** Python 3.13
-* **Фреймворк:** FastAPI (Async)
-* **База даних:** PostgreSQL 17 (використання `JSONB` для гнучких структур).
-* **ORM:** SQLAlchemy 2.0 (Asyncpg).
-* **AI Engine:** Ollama (Gemma 3).
-* **Storage:** MinIO (S3 Compatible).
-* **Task Processing:** Asyncio (паралельна обробка файлів та запитів).
-* **Reports:** Jinja2, WeasyPrint, Docxtpl, Pandas.
+Orchestrates the AI-powered candidate evaluation workflow.
+
+### Functions
+
+#### `generate_answer(prompt, position_id, files, session)`
+Main entry point for candidate profile generation.
+
+**Flow:**
+1. Extracts text from uploaded files using `file_service`
+2. Retrieves position details from database
+3. Constructs prompt with extracted text and position requirements
+4. Sends prompt to Ollama API (Gemma 3 12B model)
+5. Parses AI response as structured JSON profile
+6. Uploads original files to MinIO
+7. Saves `CandidateProfile` to database
+
+**Returns:** `CandidateResponse` with generated profile and file metadata
 
 ---
 
-## ⚙️ Встановлення та Запуск
+## candidate_service.py
 
-### Передумови
-* Docker & Docker Compose
-* Ollama (запущена локально або в мережі)
+Handles candidate profile management.
 
-### 1. Клонування репозиторію
-```bash
-git clone [https://github.com/your-username/iudicium-backend.git](https://github.com/your-username/iudicium-backend.git)
-cd iudicium-backend
+### Functions
+
+#### `get_all_candidates(session)`
+Returns all candidate profiles from the database.
+
+#### `get_candidate_by_id(candidate_id, session)`
+Retrieves a single candidate by UUID. Raises `404` if not found.
+
+#### `delete_candidate_by_id(candidate_id, session)`
+Deletes a candidate and all associated files from both database and MinIO storage.
+
+---
+
+## position_service.py
+
+Manages job positions used for candidate evaluation.
+
+### Functions
+
+#### `get_all_position(session)`
+Returns all positions from the database.
+
+#### `get_position_by_id(position_id, session)`
+Retrieves a single position by UUID. Raises `404` if not found.
+
+#### `create_position(position_create, session)`
+Creates a new position with name and parameters (JSONB).
+
+#### `delete_position_by_id(position_id, session)`
+Deletes a position by UUID.
+
+---
+
+## minio_service.py
+
+Handles file storage operations using MinIO (S3-compatible).
+
+### Functions
+
+#### `upload_files(files)`
+Batch uploads files to MinIO. Returns tuple of successful uploads and errors.
+
+#### `download_candidate_file(file_id, session)`
+Downloads a file from MinIO by ID. Returns `StreamingResponse` with proper content-disposition headers.
+
+#### `upload_candidate_file(candidate_id, file, session)`
+Uploads a single file and associates it with an existing candidate.
+
+#### `delete_candidate_file(file_id, session)`
+Removes file from both MinIO storage and database.
+
+---
+
+## file_service.py
+
+Handles file parsing and text extraction for AI processing.
+
+### Supported File Types
+
+| Type | Extensions | Processing |
+|------|------------|------------|
+| Text | `.txt`, `.csv`, `.md`, `.mermaid`, `.mmd` | UTF-8 decode |
+| PDF | `.pdf` | PyMuPDF (fitz) text extraction |
+| Word | `.docx` | python-docx paragraph extraction |
+| JSON | `.json` | JSON parsing |
+
+### Functions
+
+#### `read_text(files)`
+Processes multiple files and concatenates text content. Returns:
+- `full_text`: Combined text from all files
+- `read_files`: Successfully processed files
+- `error_files`: Files that failed to process
+
+#### `_get_file_extension(file)`
+Detects file type using python-magic (libmagic) for security.
+
+---
+
+## export_service.py
+
+Generates exportable reports from candidate profiles.
+
+### Export Formats
+
+| Format | Function | Output |
+|--------|----------|--------|
+| JSON | `_export_json()` | Pretty-printed JSON file |
+| CSV | `_export_csv()` | Flattened CSV with headers |
+| DOCX | `_export_docx()` | Word document from template |
+| PDF | `_export_pdf()` | PDF from HTML template (WeasyPrint) |
+
+### Functions
+
+#### `export_candidate(candidate_id, format, session)`
+Main export function. Retrieves candidate and delegates to format-specific exporter.
+
+---
+
+## youcontrol_service.py
+
+Integrates with YouScore API for background verification checks.
+
+### Checked Databases
+
+**National Security:**
+- SSU Wanted and Traitors
+- NACP War and Sanctions
+- General Prosecutor Feb 24 Suspects
+- Myrotvorets Center
+- RNBO Sanctions
+- Global Sanctions Lists
+
+**Law & Corruption:**
+- Corrupted Persons Registry
+- MVS Wanted/Missing Persons
+- Lustrated Persons
+- Court Cases to be Heard
+
+**Conflict of Interest:**
+- Related Persons (Companies & FOP)
+
+### Functions
+
+#### `check_candidate(surname, name, patronymic, birth_date)`
+Performs parallel checks across all configured endpoints. Returns list of `CheckResult` objects where matches were found.
+
+**Features:**
+- Two-step queries for detailed data
+- Birth date filtering to reduce false positives
+- Concurrent execution for performance
+
+---
+
+## Dependencies
+
 ```
-
-### 2. Налаштування оточення
-Створіть файл .env на основі приклад:
-
-```bash
-cp .env.example .env
+services/
+├── ai_service.py      → file_service, minio_service, position_service
+├── candidate_service.py → minio_service, file_service
+├── export_service.py  → candidate_service
+├── position_service.py → (none)
+├── minio_service.py   → file_service
+├── file_service.py    → (none)
+└── youcontrol_service.py → (external API)
 ```
-Приклад .env:
-
-Properties
-
-```# --- APP ---
-APP_PORT=8000
-
-# --- POSTGRESQL ---
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=secret
-POSTGRES_DB=iudicium_db
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-# Зовнішній порт для підключення з хоста
-POSTGRES_EXTERNAL_PORT=5433
-
-# --- MINIO (S3) ---
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
-MINIO_BUCKET=files
-MINIO_API=minio:9000
-MINIO_PORT=9000
-MINIO_PORT_APP=9001
-# Зовнішні порти
-MINIO_EXTERNAL_PORT=9005
-MINIO_EXTERNAL_PORT_APP=9006
-
-# --- AI & INTEGRATIONS ---
-# Адреса Ollama (для доступу з контейнера до хоста)
-OLLAMA_API=[http://host.docker.internal:11434](http://host.docker.internal:11434)
-AI_MODEL=gemma3
-YOUCONTROL_API_KEY=your_key_here
-OPENAI_API_KEY=your_key_here
-```
-3. Запуск через Docker Compose
-Ця команда збере образи, застосує міграції БД та запустить сервер.
-
-```bash
-docker-compose up --build
-```
-Після запуску:
-
-Swagger UI: http://localhost:8000/docs
-
-MinIO Console: http://localhost:9006
-
-📂 Структура проєкту
-```plaintext
-
-app/
-├── api/               # Роутери (Controllers)
-├── core/              # Конфігурація, Middleware, Lifespan
-├── db/                # Підключення до БД, Base model
-├── models/            # SQLAlchemy моделі
-├── object_storage     # Налаштування minio
-├── open_ai            # Налаштування open_ai
-├── schemas/           # Pydantic схеми (DTO)
-├── services/          # Бізнес-логіка
-│   ├── ai_service.py       # Логіка спілкування з AI
-│   ├── file_service.py     # Робота з файлами та MinIO
-│   ├── export_service.py   # Генерація звітів (PDF, DOCX)
-│   ├── candidate_service.py  # CRUD операції для кандидатів: створення, оновлення, видалення, пошук у БД.
-│   ├── position_service.py   # CRUD операції для вакансій (позицій): управління вимогами та описами.
-│   ├── minio_service.py      # Низькорівнева взаємодія з MinIO (S3): завантаження (put), скачування (get), видалення об'єктів.
-│   ├── youscore_service.py   # Інтеграція з API YouControl: перевірка фізосіб у реєстрах (санкції, розшук, борги).
-│   └── audio_service.py      # (Опціонально) Обробка аудіо: транскрибація співбесід або голосових нотаток
-├── templates/         # Jinja2 та Docx шаблони
-└── main.py            # Точка входу
-```
-
-
-# 🔥 Особливості реалізації
-### 1. Partial Success (Частковий успіх)
-Система стійка до помилок. Якщо ви завантажуєте 10 файлів, і один з них пошкоджений, а MinIO "моргнув" на іншому — система обробить 8 успішних файлів, створить профіль кандидата, а про 2 помилкові файли повідомить у полі error_files.
-
-### 2. Hybrid Database Approach
-Ми використовуємо гібридний підхід до зберігання даних.
-
-Ключові поля (ім'я, email, статус) — у реляційних колонках (SQL).
-
-Гнучкі дані (досвід, навички, оцінки AI) — у полі JSONB. Це дозволяє змінювати структуру аналізу без міграцій бази даних.
-
-### 3. Безпека та "Kill Switch"
-Система використовує дворівневу перевірку безпеки:
-
-
-AI Context: Аналіз контексту (робота в окупованих регіонах, специфічні терміни).
-
-API Реєстрів: Перевірка фізособи в базах розшуку та санкцій.
-
-### 📝 Автори
-
-Шатохін Олександр, Малецький Валерій.
-
-

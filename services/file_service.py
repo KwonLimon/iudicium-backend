@@ -115,9 +115,9 @@ async def read_files_from_minio(files: List[CandidateFile]):
 
     for i, file in enumerate(files):
         ext = get_file_extension_minio(file)
-        file = await to_thread(minio_client.get_object,settings.MINIO_BUCKET, str(file.file_id) + ext)
+        minio_file = await to_thread(minio_client.get_object,settings.MINIO_BUCKET, str(file.id) + ext)
         try:
-            content = file.read()
+            content = minio_file.read()
             text = await _process_file(content, file.file_name, file.content_type)
             full_text += f"{i}: {text}\n"
 

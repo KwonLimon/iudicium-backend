@@ -43,7 +43,7 @@ async def refresh_candidate(candidate_id: UUID, prompt: str, session: AsyncSessi
 
 async def make_request(full_text: str, position_id: UUID, prompt, session: AsyncSession):
     position_orm = await get_position_by_id(position_id, session)
-    position = PositionResponse.model_validate(position_orm).model_dump()
+    position = PositionResponse.model_validate(position_orm).model_dump_json()
     final_prompt = basePrompt + info_prompt.format(full_text=full_text, position=position, prompt=prompt)
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(120)) as client:

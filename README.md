@@ -95,6 +95,7 @@ MINIO_EXTERNAL_PORT_APP=9006
 OLLAMA_API=[http://host.docker.internal:11434](http://host.docker.internal:11434)
 AI_MODEL=gemma3
 YOUCONTROL_API_KEY=your_key_here
+OPENAI_API_KEY=your_key_here
 ```
 3. Запуск через Docker Compose
 Ця команда збере образи, застосує міграції БД та запустить сервер.
@@ -116,13 +117,18 @@ app/
 ├── core/              # Конфігурація, Middleware, Lifespan
 ├── db/                # Підключення до БД, Base model
 ├── models/            # SQLAlchemy моделі
+├── object_storage     # Налаштування minio
+├── open_ai            # Налаштування open_ai
 ├── schemas/           # Pydantic схеми (DTO)
 ├── services/          # Бізнес-логіка
 │   ├── ai_service.py       # Логіка спілкування з AI
 │   ├── file_service.py     # Робота з файлами та MinIO
 │   ├── export_service.py   # Генерація звітів (PDF, DOCX)
-│   ├── text_extractor.py   # Парсинг тексту з файлів
-│   └── risk_service.py     # Перевірка стоп-факторів
+│   ├── candidate_service.py  # CRUD операції для кандидатів: створення, оновлення, видалення, пошук у БД.
+│   ├── position_service.py   # CRUD операції для вакансій (позицій): управління вимогами та описами.
+│   ├── minio_service.py      # Низькорівнева взаємодія з MinIO (S3): завантаження (put), скачування (get), видалення об'єктів.
+│   ├── youscore_service.py   # Інтеграція з API YouControl: перевірка фізосіб у реєстрах (санкції, розшук, борги).
+│   └── audio_service.py      # (Опціонально) Обробка аудіо: транскрибація співбесід або голосових нотаток
 ├── templates/         # Jinja2 та Docx шаблони
 └── main.py            # Точка входу
 ```

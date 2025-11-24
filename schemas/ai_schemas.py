@@ -7,7 +7,7 @@ class RequestToAI(BaseModel):
     model: str
     prompt: str
     stream: bool
-    format: str
+    format: str | None = None
     options: dict[str, Any]
 
 class RefreshRequest(BaseModel):

@@ -27,21 +27,26 @@ async def get_candidate_by_id(candidate_id: UUID, session: AsyncSession):
     return candidate
 
 
-async def create_candidate(profile_data, candidate_files: List[UploadFile], position_id: UUID, session: AsyncSession):
-    profile = CandidateProfile(profile=profile_data, files=candidate_files, position_id=position_id)
+async def create_candidate(profile_data, candidate_files: List[UploadFile], position_id: UUID, prompt: str,
+                           session: AsyncSession):
+    profile = CandidateProfile(profile=profile_data, files=candidate_files, position_id=position_id,
+                               additional_info=prompt)
     session.add(profile)
     await session.commit()
     await session.refresh(profile)
     return profile
 
 
-async def update_candidate_profile(candidate_id: UUID, profile_data, session: AsyncSession):
+async def update_candidate_profile(candidate_id: UUID, profile_data, prompt: str, session: AsyncSession):
     candidate = await get_candidate_by_id(candidate_id, session)
     candidate.profile = profile_data
+    if prompt:
+        candidate.additional_info += prompt
     session.add(candidate)
     await session.commit()
     await session.refresh(candidate)
     return candidate
+
 
 async def delete_candidate_by_id(candidate_id: UUID, session: AsyncSession):
     candidate = await get_candidate_by_id(candidate_id, session)

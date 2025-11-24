@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     MINIO_SECURE: bool
     CORS_ORIGINS: List[str]
     YOUCONTROL_API_KEY: str
+    OPENAI_API_KEY: str
 
     class Config:
         env_file = ".env"

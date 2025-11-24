@@ -11,8 +11,6 @@ app.include_router(ai_api.router, prefix="/api/v1/ai", tags=["AI"])
 app.include_router(minio_api.router, prefix="/api/v1/minio", tags=["Minio"])
 app.include_router(candidate_api.router, prefix="/api/v1/candidate", tags=["Candidate"])
 app.include_router(position_api.router, prefix="/api/v1/position", tags=["Position"])
-
-
 @app.get("/")
 async def root():
     return {"message": "Iudicium is running!"}
